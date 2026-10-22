@@ -1,5 +1,5 @@
 # 说明
-VRX是Virtual RobotX的简称
+VRX是Virtual RobotX的简称  
 VRX中具有波浪自适应模块无人船（wave adaptive modular vehicle，WAMV）模型，可自定义设置WAMV的推进器及搭载的传感器。
 
 仓库地址：https://github.com/osrf/vrx
@@ -245,6 +245,7 @@ ros2 launch wamv_gazebo rviz.launch.py
 ## world: 
 - wildlife_task: 鳄鱼、鸭嘴兽、乌龟 野生动物，可随波逐流
 - wayfinding_task: 三个定位的杆
+```
     <plugin
       filename="libWayfindingScoringPlugin.so"
       name="vrx::WayfindingScoringPlugin">
@@ -272,6 +273,7 @@ ros2 launch wamv_gazebo rviz.launch.py
       <running_state_duration>300</running_state_duration>
       <release_topic>/vrx/release</release_topic>
     </plugin>
+```
 - npark: 另一个仿真环境
 
 # Virtual RobotX (VRX)

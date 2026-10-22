@@ -101,7 +101,7 @@
         <projectile>
           <model_name>blue_projectile</model_name>
           <link_name>link</link_name>
-          <frame>wamv/ball_shooter_launcher_link</frame>
+          <frame>${namespace}/ball_shooter_launcher_link</frame>
           <pose>0.14 0 0 0 0 0</pose>
         </projectile>
         <num_shots>4</num_shots>

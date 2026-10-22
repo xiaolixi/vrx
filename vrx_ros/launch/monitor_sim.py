@@ -14,6 +14,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+## 简单的用pgrep 找进程，判断gz sim是否还在运行
 import codecs
 import subprocess
 import time

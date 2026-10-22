@@ -14,6 +14,11 @@
  * limitations under the License.
  *
  */
+// 这是一个TF（坐标变换）转发节点，用于接收来自仿真环境的位姿（Pose）数据，并将其发布为ROS 2的TF坐标变换。
+// 简单说：它订阅/pose和/pose_static话题，把位姿数据转换成TF坐标变换广播出去。
+// 输入话题             输出
+// /pose        →   TF广播 (动态坐标变换)
+// /pose_static  →   静态TF广播 (固定坐标变换)
 
 #include <geometry_msgs/msg/transform_stamped.hpp>
 

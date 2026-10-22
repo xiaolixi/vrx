@@ -33,12 +33,13 @@ import re
 import shutil
 import yaml
 
+# 无人机
 UAVS = [
     'vrx_hexrotor',
     'vrx_quadrotor'
 ]
-
-USVS = [
+# 无人艇
+USVS = [   # 无人艇
     'usv',
     'wam-v',
 ]
@@ -63,10 +64,11 @@ class Model:
     def is_USV(self):
         return self.model_type in USVS
 
+    ## 返回桥接、节点、自定义launch文件，但是实际上只有桥接的
     def bridges(self, world_name):
-        custom_launches = []
-        nodes = []
-        bridges = [
+        custom_launches = [] # 自定义launch文件
+        nodes = [] # 自定义节点
+        bridges = [ # 桥接
             # pose
             vrx_gz.bridges.pose(self.model_name),
             # pose static
@@ -78,19 +80,28 @@ class Model:
             # comms rx
             # vrx_gz.bridges.comms_rx(self.model_name),
         ]
-        if self.is_UAV():
+        if self.is_UAV():  # 无人机
+            # 磁力计
+            # 大气压强
             bridges.extend([
                 # Magnetometer
                 vrx_gz.bridges.magnetometer(world_name, self.model_name),
                 # Air Pressure
                 vrx_gz.bridges.air_pressure(world_name, self.model_name),
             ])
+            # twist
             bridges.extend([
                 # twist
                 vrx_gz.bridges.cmd_vel(self.model_name)
             ])
-        elif self.is_USV():
+        elif self.is_USV():  # 无人艇
             pass
+
+        print("====================bridges====================")
+        print(bridges)
+        print(nodes)
+        print(custom_launches)
+        print("====================bridges====================")
 
         return [bridges, nodes, custom_launches]
 
@@ -99,6 +110,11 @@ class Model:
         if not payloads:
             payloads = self.payload
         bridges, nodes, payload_launches = self.payload_bridges_impl(world_name, payloads)
+        print("====================payload_bridges====================")
+        print(bridges)
+        print(nodes)
+        print(payload_launches)
+        print("====================payload_bridges====================")
 
         return [bridges, nodes, payload_launches]
 
@@ -110,11 +126,12 @@ class Model:
             link_name = value[0]
             sensor_type = value[1]
 
-            bridges.extend(
+            bridges.extend(  # 传感器
                 vrx_gz.payload_bridges.payload_bridges(
                     world_name, self.model_name, link_name, sensor_name, sensor_type))
 
             if sensor_type == sdf.Sensortype.CAMERA:
+                print(f"sdf.Sensortype.CAMERA camera sensor_name: {sensor_name}")
                 ros_sensor_prefix = f'sensors/cameras/{sensor_name}'
                 nodes.append(Node(
                     package='vrx_ros',
@@ -126,6 +143,7 @@ class Model:
                                 ('output/camera_info',
                                  f'{ros_sensor_prefix}/optical/camera_info')]))
             elif sensor_type == sdf.Sensortype.RGBD_CAMERA:
+                print(f"sdf.Sensortype.RGBD_CAMERA camera sensor_name: {sensor_name}")
                 ros_sensor_prefix = f'sensors/cameras/{sensor_name}'
                 nodes.append(Node(
                     package='vrx_ros',
@@ -243,7 +261,7 @@ class Model:
                                          stderr=subprocess.PIPE)
         stdout = xacro_process.communicate()[0]
         urdf_str = codecs.getdecoder('unicode_escape')(stdout)[0]
-        print(xacro_command)
+        print(f"用xacro命令生成urdf文件 {xacro_command} 生成的urdf文件")
 
         # run gz sdf print to generate sdf file
         model_dir = os.path.join(get_package_share_directory('vrx_gazebo'), 'models', self.model_name)
@@ -251,18 +269,22 @@ class Model:
         model_output_file = os.path.join(model_tmp_dir, 'model.urdf')
         if not os.path.exists(model_tmp_dir):
             pathlib.Path(model_tmp_dir).mkdir(parents=True, exist_ok=True)
+        print(f"将urdf文件写入文件 {model_output_file}")
         with open(model_output_file, 'w') as f:
             f.write(urdf_str)
         command = ['gz', 'sdf', '-p']
         command.append(model_output_file)
+        print(f"运行 gz sdf -p {model_output_file} 生成 sdf 文件")
         return command
 
     def generate(self):
         command = None
         if not self.urdf:
+            # 获取机器人的模型文件
             self.urdf = os.path.join(get_package_share_directory('wamv_gazebo'),
                                      'urdf', 'wamv_gazebo.urdf.xacro')
         command = self.xacro_cmd()
+        # 运行 xacro 命令生成 sdf 文件
         process = subprocess.Popen(command,
                                    stdout=subprocess.PIPE,
                                    stderr=subprocess.PIPE)
@@ -294,7 +316,8 @@ class Model:
             return result.group(1)
 
     def payload_from_sdf(self, model_sdf):
-        payload = {}
+        print(f"从 sdf 文件 {model_sdf[:20]}... 提取 payload")
+        payload = {}   # {sensor_name: [link_name, sensor_type]}
         root = sdf.Root()
         root.load_sdf_string(model_sdf)
         model = root.model()

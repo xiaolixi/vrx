@@ -18,6 +18,10 @@ from ament_index_python.packages import get_package_share_directory
 from launch import LaunchDescription
 import launch.actions
 import launch_ros.actions
+# =============================================================================
+# 启动 joy joy_node
+# joy_teleop joy_teleop
+# =============================================================================
 
 def generate_launch_description():
 

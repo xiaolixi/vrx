@@ -50,13 +50,14 @@ def launch(context, *args, **kwargs):
           m.set_urdf(robot_urdf)
       models.append(m)
 
-    world_name, ext = os.path.splitext(world_name)
+    world_name, ext = os.path.splitext(world_name)  #一个文件名拆成 不带扩展名的部分 和 扩展名。
     launch_processes.extend(vrx_gz.launch.simulation(world_name, headless, 
                                                      gz_paused, extra_gz_args))
-    world_name_base = os.path.basename(world_name)
+    world_name_base = os.path.basename(world_name)  # 从完整路径里取出文件名，也就是去掉前面的目录部分。
     launch_processes.extend(vrx_gz.launch.spawn(sim_mode, world_name_base, models, robot))
 
     if (sim_mode == 'bridge' or sim_mode == 'full') and bridge_competition_topics:
+        print(f"--------------------bridge competition topics----------------- competition_mode: {competition_mode}")
         launch_processes.extend(vrx_gz.launch.competition_bridges(world_name_base, competition_mode))
 
     return launch_processes

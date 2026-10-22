@@ -21,6 +21,11 @@ from launch.substitutions import LaunchConfiguration
 import vrx_gz.launch
 from vrx_gz.model import Model
 
+# =============================================================================
+# VRX 机器人配置启动
+# spawn机器人
+# 桥接话题
+# =============================================================================
 
 def launch(context, *args, **kwargs):
     config_file = LaunchConfiguration('config_file').perform(context)

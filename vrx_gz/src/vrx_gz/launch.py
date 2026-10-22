@@ -210,7 +210,9 @@ FOLLOWPATH_WORLDS = [
   'follow_path4',
   'follow_path5'
 ]
-
+# 启动 Gazebo 仿真环境/gz_sim.launch.py
+# 设置桥接
+# 创建RSP
 def simulation(world_name, headless=False, paused=False, extra_gz_args=''):
     gz_args = ['-v 4']
     if not paused:
@@ -220,8 +222,10 @@ def simulation(world_name, headless=False, paused=False, extra_gz_args=''):
         gz_args.append('-s')
 
     gz_args.append(extra_gz_args)
-
+    # 因为有环境变量，所以可以从环境变量中获取真实路径
     gz_args.append(f'{world_name}.sdf')
+
+    print(f"启动 Gazebo 仿真环境/gz_sim.launch.py simulation world_name: {world_name} gz_args: {' '.join(gz_args)}")
 
     gz_sim = IncludeLaunchDescription(
         PythonLaunchDescriptionSource([os.path.join(
@@ -242,8 +246,8 @@ def simulation(world_name, headless=False, paused=False, extra_gz_args=''):
     )
     sim_exit_event_handler = RegisterEventHandler(
         OnProcessExit(
-            target_action=monitor_sim_proc,
-            on_exit=[
+            target_action=monitor_sim_proc,   # 告诉系统"我要监控 monitor_sim 这个进程"
+            on_exit=[  # Shutdown 这是一个特殊的系统事件，会触发整个 Launch 系统的关闭
                 EmitEvent(event=Shutdown(reason='Simulation ended'))
             ]
         )
@@ -251,7 +255,7 @@ def simulation(world_name, headless=False, paused=False, extra_gz_args=''):
 
     return [gz_sim, monitor_sim_proc, sim_exit_event_handler]
 
-
+## 专为竞赛模式设计的桥梁
 def competition_bridges(world_name, competition_mode=False):
     bridges = [
         vrx_gz.bridges.clock(),
@@ -266,10 +270,12 @@ def competition_bridges(world_name, competition_mode=False):
 
     task_bridges = []
     if world_name in PERCEPTION_WORLDS:
+        print(f"world_name: {world_name} in PERCEPTION_WORLDS")
         task_bridges = [
             vrx_gz.bridges.perception_reports(),
         ]
     elif world_name in STATIONKEEPING_WORLDS:
+        print(f"world_name: {world_name} in STATIONKEEPING_WORLDS")
         task_bridges = [
             vrx_gz.bridges.stationkeeping_goal(),
         ]
@@ -279,6 +285,7 @@ def competition_bridges(world_name, competition_mode=False):
                 vrx_gz.bridges.stationkeeping_pose_error(),
             ])
     elif world_name in WAYFINDING_WORLDS:
+        print(f"world_name: {world_name} in WAYFINDING_WORLDS")
         task_bridges = [
             vrx_gz.bridges.wayfinding_waypoints(),
         ]
@@ -288,6 +295,7 @@ def competition_bridges(world_name, competition_mode=False):
                 vrx_gz.bridges.wayfinding_min_errors(),
             ])
     elif world_name in GYMKHANA_WORLDS:
+        print(f"world_name: {world_name} in GYMKHANA_WORLDS")
         task_bridges = [
             vrx_gz.bridges.gymkhana_blackbox_goal(),
         ]
@@ -297,12 +305,14 @@ def competition_bridges(world_name, competition_mode=False):
                 vrx_gz.bridges.gymkhana_blackbox_pose_error(),
             ])
     elif world_name in WILDLIFE_WORLDS:
+        print(f"world_name: {world_name} in WILDLIFE_WORLDS")
         task_bridges = [
             vrx_gz.bridges.animal_pose('/vrx/wildlife/animal0/pose'),
             vrx_gz.bridges.animal_pose('/vrx/wildlife/animal1/pose'),
             vrx_gz.bridges.animal_pose('/vrx/wildlife/animal2/pose'),
         ]
     elif world_name in SCAN_DOCK_DELIVER_WORLDS:
+        print(f"world_name: {world_name} in SCAN_DOCK_DELIVER_WORLDS")
         task_bridges = [
             vrx_gz.bridges.color_sequence_reports(),
         ]
@@ -316,10 +326,54 @@ def competition_bridges(world_name, competition_mode=False):
         arguments=[bridge.argument() for bridge in bridges],
         remappings=[bridge.remapping() for bridge in bridges],
     ))
+
+    print(f"桥接竞赛的ros_gz_bridge。competition_bridges bridges: {bridges}")
     return nodes
+
+# 启动 parameter_bridge,把长话题名 remap 成短话题名
+# ros2 run ros_gz_bridge parameter_bridge \
+#     /world/sydney_regatta/model/wamv/link/cpu_camera_link/sensor/camera_front/image@sensor_msgs/msg/Image[gz.msgs.Image \
+#     --ros-args \
+#     -r /world/sydney_regatta/model/wamv/link/cpu_camera_link/sensor/camera_front/image:=sensors/cameras/camera_front/image_raw
+# <node pkg="ros_gz_bridge" exec="parameter_bridge" ...>
+#     <param name="arguments" value="..."/>
+#     <remap from="/world/.../image" to="sensors/cameras/image_raw"/>
+# </node>
+def ros_gz_bridge_function(bridges):
+    arguments=[bridge.argument() for bridge in bridges]
+    remappings=[bridge.remapping() for bridge in bridges]
+    
+    print('----------------------spawn ros_gz_bridge parameter_bridge ------------')
+    print(arguments)
+    print(remappings)
+    print('----------------------spawn ros_gz_bridge parameter_bridge ------------ end')
+    return Node(
+        package='ros_gz_bridge',
+        executable='parameter_bridge',
+        output='screen',
+        arguments=arguments,
+        remappings=remappings,
+    )
+
+def robot_state_publisher_function(model, use_sim_time):
+    model_dir = os.path.join(get_package_share_directory('vrx_gazebo'), 'models/' + model.model_name + '/tmp')
+    urdf_file = os.path.join(model_dir, 'model.urdf')
+    print(f"robot_state_publisher robot_description from urdf_file: {urdf_file}")
+    with open(urdf_file, 'r') as infp:
+        robot_desc = infp.read()
+    # robot_state_publisher订阅/joint_states，发布/tf
+    # frame_prefix给机器人的所有坐标系（TF Frame）加个前缀。
+    params = {'use_sim_time': use_sim_time, 'frame_prefix': model.model_name + '/', 'robot_description': robot_desc}
+    return Node(package='robot_state_publisher',
+                executable='robot_state_publisher',
+                output='both',
+                parameters=[params],
+                remappings=[('/joint_states', '/' + model.model_name + '/joint_states')] # 订阅 /joint_states改成订阅 /wamv/joint_states
+            )
 
 
 def spawn(sim_mode, world_name, models, robot=None):
+    print(f"spawn sim_mode: {sim_mode} world_name: {world_name} models: {models} robot: {robot}")
     if type(models) != list:
         models = [models]
     use_sim_time = LaunchConfiguration('use_sim_time', default='true')
@@ -330,37 +384,34 @@ def spawn(sim_mode, world_name, models, robot=None):
 
     launch_processes = []
     for model in models:
+        # 指定那个机器人
         if robot and model.model_name != robot:
             continue
 
         # Script to insert model in running simulation
         if sim_mode == 'full' or sim_mode == 'sim':
+            arguments = model.spawn_args()
             gz_spawn_entity = Node(
                 package='ros_gz_sim',
                 executable='create',
                 output='screen',
-                arguments=model.spawn_args()
+                arguments=arguments
             )
+            truncated_args = [arg[:20] + '...' if len(arg) > 20 else arg for arg in arguments]
+            
+            print(f"spawn 机器人 ros_gz_sim create 参数有model: {model.model_name} spawn_args: {truncated_args}")
             launch_processes.append(gz_spawn_entity)
 
         if sim_mode == 'full' or sim_mode == 'bridge':
+            ## 返回桥接、节点、自定义launch文件，但是实际上只有桥接
             bridges, nodes, custom_launches = model.bridges(world_name)
-
-            payload = model.payload_bridges(world_name)
-            payload_bridges = payload[0]
-            payload_nodes = payload[1]
-            payload_launches = payload[2]
+            ## 返回桥接、节点、自定义launch文件，但是实际上只有桥接和节点【相机的optical_frame_publisher】
+            payload_bridges, payload_nodes, payload_launches = model.payload_bridges(world_name)
 
             bridges.extend(payload_bridges)
             nodes.extend(payload_nodes)
 
-            nodes.append(Node(
-                package='ros_gz_bridge',
-                executable='parameter_bridge',
-                output='screen',
-                arguments=[bridge.argument() for bridge in bridges],
-                remappings=[bridge.remapping() for bridge in bridges],
-            ))
+            nodes.append(ros_gz_bridge_function(bridges))
 
             # tf broadcaster (sensors)
             nodes.append(Node(
@@ -370,16 +421,16 @@ def spawn(sim_mode, world_name, models, robot=None):
             ))
 
             # robot_state_publisher (tf for wamv)
-            model_dir = os.path.join(get_package_share_directory('vrx_gazebo'), 'models/wamv/tmp')
-            urdf_file = os.path.join(model_dir, 'model.urdf')
-            with open(urdf_file, 'r') as infp:
-                robot_desc = infp.read()
-            params = {'use_sim_time': use_sim_time, 'frame_prefix': 'wamv/', 'robot_description': robot_desc}
-            nodes.append(Node(package='robot_state_publisher',
-                                  executable='robot_state_publisher',
-                                  output='both',
-                                  parameters=[params],
-                                  remappings=[('/joint_states', '/wamv/joint_states')]))
+            nodes.append(robot_state_publisher_function(model, use_sim_time))
+            ## TODO 注意这里是已经转换过了topic名称，然后仔加的环境前缀
+            # - PushRosNamespace('wamv') = 把后续所有节点都放到 /wamv 命名空间下
+            # - GroupAction([...]) = 把多个动作打包成一个整体
+            # - *nodes = 把列表展开,如 *[node1, node2, node3] 变成 node1, node2, node3
+            # 项目	            实际值	                        由什么决定
+            # 节点名	        /wamv/robot_state_publisher	    PushRosNamespace 影响 
+            # 订阅joint_states	/wamv/joint_states	            你显式 remap 的绝对路径
+            # 发布TF话题	    /tf、/tf_static	                RSP 的 tf2 broadcaster 绑定根命名空间，不受 PushRosNamespace 影响 
+            # TF frame名	    wamv/base_link等	           frame_prefix 参数
 
             group_action = GroupAction([
                 PushRosNamespace(model.model_name),
@@ -389,7 +440,7 @@ def spawn(sim_mode, world_name, models, robot=None):
             if sim_mode == 'full':
                 handler = RegisterEventHandler(
                     event_handler=OnProcessExit(
-                        target_action=gz_spawn_entity,
+                        target_action=gz_spawn_entity,  # gz_spawn_entity 这个节点执行的是 "一次性任务"，不是常驻进程。
                         on_exit=[group_action],
                     )
                 )
@@ -397,6 +448,7 @@ def spawn(sim_mode, world_name, models, robot=None):
             elif sim_mode == 'bridge':
                 launch_processes.append(group_action)
 
+            # 两个launch
             launch_processes.extend(payload_launches)
             launch_processes.extend(custom_launches)
 

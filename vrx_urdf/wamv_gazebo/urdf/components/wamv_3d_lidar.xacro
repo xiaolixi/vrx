@@ -161,6 +161,7 @@
 
       <sensor type="gpu_ray" name="${name}_sensor">
         <update_rate>${update_rate}</update_rate>
+        <visualize>true</visualize>
         <ray>
           <visibility_mask>7</visibility_mask>
           <scan>

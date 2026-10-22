@@ -314,6 +314,15 @@
       <grid>false</grid>
       <ambient>1.0 1.0 1.0</ambient>
       <background>0.8 0.8 0.8</background>
+
+ <!-- Enable fog 但是新版本没有实现， classic可以-->
+      <fog>
+        <type>linear</type>
+        <color>0.8 0.6 0.4 1</color>
+        <start>1</start>
+        <end>100</end>
+        <density>1</density>
+      </fog>
     </scene>
 
     <!-- Estimated latitude/longitude of sydneyregatta

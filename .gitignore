@@ -1,5 +1,5 @@
 syntax: glob
-
+.workbuddy/
 .DS_Store
 *.swp
 *.orig

@@ -2,6 +2,42 @@
 `vrx_gz` 是这个仓库的**仿真主包**：它既提供 Gazebo Sim（gz-sim8）里的世界、模型和 C++ 仿真插件，也提供一套 Python 启动层，用来生成 SDF、把机器人放进场景，并把 Gazebo 话题桥接成 ROS 2 话题。换句话说，**船如何在水里动、比赛如何判分、传感器数据如何进入 ROS，全在这个包里决定**。
 
 先看它的运行时数据流：
+
+<svg viewBox="0 0 680 190" width="100%" role="img" xmlns="http://www.w3.org/2000/svg">
+<title>vrx_gz 运行时数据流</title>
+<desc>从 launch 层到 gz sim 仿真、ros_gz_bridge 桥接，最终输出 ROS 2 话题的四段流程。</desc>
+<defs>
+<marker id="arrow" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+<path d="M2 1L8 5L2 9" fill="none" stroke="context-stroke" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+</marker>
+</defs>
+<g>
+<rect x="45" y="44" width="128" height="56" rx="8" fill="#E6F1FB" stroke="#185FA5" stroke-width="0.5"/>
+<text x="109" y="66" text-anchor="middle" dominant-baseline="central" font-family="var(--font-sans)" font-size="13" font-weight="500" fill="#0C447C">launch 层</text>
+<text x="109" y="84" text-anchor="middle" dominant-baseline="central" font-family="var(--font-sans)" font-size="12" fill="#185FA5">解析参数与 YAML</text>
+</g>
+<path d="M173 72 H193" fill="none" stroke="#888780" stroke-width="1.5" marker-end="url(#arrow)"/>
+<g>
+<rect x="199" y="44" width="128" height="56" rx="8" fill="#E1F5EE" stroke="#0F6E56" stroke-width="0.5"/>
+<text x="263" y="66" text-anchor="middle" dominant-baseline="central" font-family="var(--font-sans)" font-size="13" font-weight="500" fill="#085041">Gazebo 仿真</text>
+<text x="263" y="84" text-anchor="middle" dominant-baseline="central" font-family="var(--font-sans)" font-size="12" fill="#0F6E56">world + 船 + 插件</text>
+</g>
+<path d="M327 72 H347" fill="none" stroke="#888780" stroke-width="1.5" marker-end="url(#arrow)"/>
+<g>
+<rect x="353" y="44" width="128" height="56" rx="8" fill="#FAEEDA" stroke="#854F0B" stroke-width="0.5"/>
+<text x="417" y="66" text-anchor="middle" dominant-baseline="central" font-family="var(--font-sans)" font-size="13" font-weight="500" fill="#633806">ros_gz_bridge</text>
+<text x="417" y="84" text-anchor="middle" dominant-baseline="central" font-family="var(--font-sans)" font-size="12" fill="#854F0B">GZ ↔ ROS 话题</text>
+</g>
+<path d="M481 72 H501" fill="none" stroke="#888780" stroke-width="1.5" marker-end="url(#arrow)"/>
+<g>
+<rect x="507" y="44" width="128" height="56" rx="8" fill="#EEEDFE" stroke="#534AB7" stroke-width="0.5"/>
+<text x="571" y="66" text-anchor="middle" dominant-baseline="central" font-family="var(--font-sans)" font-size="13" font-weight="500" fill="#3C3489">ROS 2 话题</text>
+<text x="571" y="84" text-anchor="middle" dominant-baseline="central" font-family="var(--font-sans)" font-size="12" fill="#534AB7">/wamv/sensors/…</text>
+</g>
+<text x="45" y="140" font-family="var(--font-sans)" font-size="12" fill="#5F5E5A">内含 13 个任务世界 + 72 个赛季变体、30 个模型、20+ 个 C++ 仿真插件</text>
+<text x="45" y="160" font-family="var(--font-sans)" font-size="12" fill="#5F5E5A">hooks/ 注册 GZ_SIM_RESOURCE_PATH，gz sim 才能按世界名找到 SDF 与模型</text>
+</svg>
+
 ## 一、它到底是什么
 
 `vrx_gz` 是 VRX（Virtual RobotX 无人艇竞赛）的**Gazebo 侧基座**，其 `package.xml` 写的是 “VRX gazebo resources”，但实际功能远超“资源”：
